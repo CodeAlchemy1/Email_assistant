@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Assistant</title>
+    <!-- Import Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Introduce the Font Awesome icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Introduce marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Introduce highlight.js for code highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/highlight.min.js"></script>
+    <style>
+        .chat-message:hover {
+            transform: translateY(-2px);
+            transition: transform 0.3s ease;
+        }
+        
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 18px;
+            background-color: #4f46e5;
+            animation: blink 0.8s infinite;
+            vertical-align: middle;
+            margin-left: 2px;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(120deg, #a1c4fd 0%, #c2e9fb 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .sidebar-button {
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-button:hover {
+            transform: translateX(5px);
+        }
+        
+        /* Markdown style */
+        .markdown-content {
+            line-height: 1.6;
+        }
+        
+        .markdown-content h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            color: #374151;
+        }
+        
+        .markdown-content h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 1.4rem;
+            margin-bottom: 0.8rem;
+            color: #374151;
+        }
+        
+        .markdown-content h3 {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-top: 1.2rem;
+            margin-bottom: 0.7rem;
+            color: #374151;
+        }
+        
+        .markdown-content h4, .markdown-content h5, .markdown-content h6 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 1rem;
+            margin-bottom: 0.6rem;
+            color: #374151;
+        }
+        
+        .markdown-content p {
+            margin-bottom: 1rem;
+        }
+        
+        .markdown-content ul, .markdown-content ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .markdown-content ul {
+            list-style-type: disc;
+        }
+        
+        .markdown-content ol {
+            list-style-type: decimal;
+        }
+        
+        .markdown-content li {
+            margin-bottom: 0.5rem;
+        }
+        
+        .markdown-content a {
+            color: #4f46e5;
+            text-decoration: underline;
+        }
+        
+        .markdown-content blockquote {
+            border-left: 4px solid #d1d5db;
+            padding-left: 1rem;
+            color: #6b7280;
+            margin-bottom: 1rem;
+        }
+        
+        .markdown-content pre {
+            background-color: #f3f4f6;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+        }
+        
+        .markdown-content code {
+            font-family: monospace;
+            background-color: #f3f4f6;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+        }
+        
+        .markdown-content pre code {
+            padding: 0;
+            background-color: transparent;
+        }
+        
+        .markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+        }
+        
+        .markdown-content table th,
+        .markdown-content table td {
+            border: 1px solid #d1d5db;
+            padding: 0.5rem;
+        }
+        
+        .markdown-content table th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+        }
+        
+        .markdown-content hr {
+            border: 0;
+            border-top: 1px solid #d1d5db;
+            margin: 1.5rem 0;
+        }
+        
+        .markdown-content img {
+            max-width: 100%;
+            height: auto;
+            margin: 1rem 0;
+        }
+        
+        /* Modify the style of the chat container */
+        .chat-container {
+            height: calc(100vh - 280px); /* Adjust the height to leave more space for the input box */
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e0 #f3f4f6;
+            flex: 1;
+        }
+        
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .chat-container::-webkit-scrollbar-track {
+            background: #f3f4f6;
+            border-radius: 3px;
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb {
+            background-color: #cbd5e0;
+            border-radius: 3px;
+        }
+        
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background-color: #9ca3af;
+        }
+        
+        /* Add the style of the main content area */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        /* Add the style of the chat area */
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0; /* Important: Allow the contraction of flex sub-items */
+        }
+        
+        /* Add the style of the message operation button */
+        .message-actions {
+            position: absolute;
+            right: 0.5rem;
+            bottom: 0.5rem;
+            display: none;
+            gap: 0.5rem;
+        }
+        
+        .chat-message {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: white;
+            flex-shrink: 0;
+        }
+        
+        .avatar-ai {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+        
+        .avatar-user {
+            background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+        }
+        
+        .message-content {
+            flex: 1;
+            background: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            max-width: calc(100% - 60px); /* Subtract the width and spacing of the avatar */
+            position: relative;
+        }
+        
+        .message-content.user {
+            background: #f3f4f6;
+        }
+        
+        .chat-message:hover .message-actions {
+            display: flex;
+        }
+        
+        .action-button {
+            padding: 0.25rem;
+            border-radius: 0.25rem;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+        
+        .action-button:hover {
+            background-color: #f3f4f6;
+            color: #4f46e5;
+        }
+        
+        /* Language switching button style */
+        .language-switch {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .language-switch:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans h-screen overflow-hidden">
+    <div class="h-screen flex flex-col">
+        <!-- Top navigation bar -->
+        <header class="bg-indigo-600 text-white shadow-md py-4 px-6">
+            <div class="container mx-auto flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-envelope-open-text text-xl"></i>
+                    <h1 class="text-xl font-bold" data-i18n="title">Email Assistant</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <!-- language switch -->
+                    <button id="language-switch" class="language-switch">
+                        <i class="fas fa-globe mr-1"></i>
+                        <span>English</span>
+                    </button>
+                    <!-- Switch the streaming output -->
+                    <div class="flex items-center space-x-2">
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="stream-toggle" checked class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                            <span class="ml-2 text-sm font-medium text-white" data-i18n="streamOutput">Streaming Output</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Main content area -->
+        <div class="flex-1 flex overflow-hidden">
+            <!-- sidebar -->
+            <aside class="w-64 bg-white shadow-lg z-10 overflow-y-auto hidden md:block">
+                <div class="p-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-indigo-600" data-i18n="functionMenu">Function Menu</h2>
+                </div>
+                <nav class="p-4 space-y-2">
+                    <button class="sidebar-button w-full flex items-center p-3 rounded-lg text-left font-medium bg-indigo-100 text-indigo-700 active" data-function="chat">
+                        <i class="fas fa-comments mr-3"></i>
+                        <span data-i18n="generalChat">General Chat</span>
+                    </button>
+                    <button class="sidebar-button w-full flex items-center p-3 rounded-lg text-left font-medium text-gray-700 hover:bg-gray-100" data-function="template">
+                        <i class="fas fa-file-alt mr-3"></i>
+                        <span data-i18n="emailTemplate">Email Template</span>
+                    </button>
+                    <button class="sidebar-button w-full flex items-center p-3 rounded-lg text-left font-medium text-gray-700 hover:bg-gray-100" data-function="analyze">
+                        <i class="fas fa-search mr-3"></i>
+                        <span data-i18n="emailAnalysis">Email Analysis</span>
+                    </button>
+                    <button class="sidebar-button w-full flex items-center p-3 rounded-lg text-left font-medium text-gray-700 hover:bg-gray-100" data-function="rewrite">
+                        <i class="fas fa-pen-fancy mr-3"></i>
+                        <span data-i18n="emailRewrite">Email Rewrite</span>
+                    </button>
+                    <button class="sidebar-button w-full flex items-center p-3 rounded-lg text-left font-medium text-gray-700 hover:bg-gray-100" data-function="translate">
+                        <i class="fas fa-language mr-3"></i>
+                        <span data-i18n="emailTranslate">Email Translation</span>
+                    </button>
+                    <button class="sidebar-button w-full flex items-center p-3 rounded-lg text-left font-medium text-gray-700 hover:bg-gray-100" data-function="follow-up">
+                        <i class="fas fa-reply mr-3"></i>
+                        <span data-i18n="followUpEmail">Follow-up Email</span>
+                    </button>
+                </nav>
+                
+                <!-- The mobile menu close button -->
+                <div class="md:hidden p-4 border-t border-gray-200">
+                    <button id="close-sidebar" class="w-full py-2 px-4 bg-gray-200 rounded-lg text-gray-700 flex items-center justify-center">
+                        <i class="fas fa-times mr-2"></i> <span data-i18n="closeMenu">Close Menu</span>
+                    </button>
+                </div>
+            </aside>
+            
+            <!-- Chat and Function Area -->
+            <main class="flex-1 flex flex-col overflow-hidden bg-gray-50 relative main-content">
+                <!-- Mobile Menu Button -->
+                <div class="md:hidden absolute top-2 left-2 z-20">
+                    <button id="open-sidebar" class="p-2 bg-indigo-600 rounded-lg text-white shadow-md">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+                
+                <!-- Chat Area -->
+                <div class="chat-area">
+                    <!-- Chat Title -->
+                    <div class="p-4 border-b border-gray-200 bg-white shadow-sm flex items-center">
+                        <h2 id="chat-title" class="text-lg font-semibold text-gray-800" data-i18n="chatWithAssistant">Chat with Email Assistant</h2>
+                    </div>
+                    
+                    <!-- Chat content -->
+                    <div id="chat-body" class="chat-container p-4 space-y-4">
+                        <div class="chat-message max-w-3xl mx-auto bg-white p-4 rounded-lg shadow-sm border-l-4 border-indigo-500">
+                            <p data-i18n="welcomeMessage">Hello! I'm your email assistant. I can help you analyze emails, improve tone, translate emails, generate templates or follow-up emails. How can I help you?</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Function Panel Section -->
+                    <div class="bg-white border-t border-gray-200 p-4 hidden" id="function-panels">
+                        <!-- Email Analysis -->
+                        <div class="function-panel hidden" id="analyze-panel">
+                            <h3 class="text-lg font-semibold mb-3 text-gray-800" data-i18n="emailAnalysis">Email Analysis</h3>
+                            <div class="space-y-3">
+                                <textarea id="analyze-email" class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" data-i18n="enterEmailContent" placeholder="Please enter the email content to analyze..." rows="6"></textarea>
+                                <button id="analyze-button" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors">
+                                    <i class="fas fa-search mr-2"></i><span data-i18n="analyzeEmail">Analyze Email</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Email Rewrite -->
+                        <div class="function-panel hidden" id="rewrite-panel">
+                            <h3 class="text-lg font-semibold mb-3 text-gray-800" data-i18n="emailRewrite">Email Rewrite</h3>
+                            <div class="space-y-3">
+                                <textarea id="rewrite-email" class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" data-i18n="enterEmailContent" placeholder="Please enter the email content to rewrite..." rows="6"></textarea>
+                                <input type="text" id="rewrite-requirements" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" data-i18n="enterRewriteRequirements" placeholder="Please enter rewrite requirements, such as 'more formal', 'friendlier', etc.">
+                                <button id="rewrite-button" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors">
+                                    <i class="fas fa-pen-fancy mr-2"></i><span data-i18n="rewriteEmail">Rewrite Email</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Email Translation -->
+                        <div class="function-panel hidden" id="translate-panel">
+                            <h3 class="text-lg font-semibold mb-3 text-gray-800" data-i18n="emailTranslate">Email Translation</h3>
+                            <div class="space-y-3">
+                                <textarea id="translate-email" class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" data-i18n="enterEmailContent" placeholder="Please enter the email content to be translated..." rows="6"></textarea>
+                                <select id="translate-language" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" data-i18n="selectTargetLanguage">
+                                    <option value="" data-i18n="selectTargetLanguage">Please select the target language</option>
+                                    <option value="English">English</option>
+                                    <option value="Japanese">Japanese</option>
+                                    <option value="Korean">Korean</option>
+                                    <option value="French">French</option>
+                                    <option value="German">German</option>
+                                    <option value="Spanish">Spanish</option>
+                                    <option value="Russian">Russian</option>
+                                    <option value="Portuguese">Portuguese</option>
+                                    <option value="Italian">Italian</option>
+                                    <option value="Arabic">Arabic</option>
+                                    <option value="Thai">Thai</option>
+                                    <option value="Vietnamese">Vietnamese</option>
+                                    <option value="Indonesian">Indonesian</option>
+                                    <option value="Malay">Malay</option>
+                                </select>
+                                <button id="translate-button" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors">
+                                    <i class="fas fa-language mr-2"></i><span data-i18n="translateEmail">Email Translation</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Email Template -->
+                        <div id="template-panel" class="function-panel hidden">
+                            <div class="mb-4">
+                                <label class="block mb-2 font-semibold" data-i18n="selectTemplateType">Select Email Template Type：</label>
+                                <select id="template-type" class="w-full p-2 border rounded">
+                                    <option value="meeting" data-i18n="meetingInvitation">Meeting Invitation</option>
+                                    <option value="leave" data-i18n="leaveRequest">Leave Request</option>
+                                    <option value="complaint" data-i18n="complaintReply">Complaint Reply</option>
+                                    <option value="quotation" data-i18n="quotation">Quotation</option>
+                                    <option value="reminder" data-i18n="paymentReminder">Payment Reminder</option>
+                                </select>
+                            </div>
+                            <button id="open-template-modal" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700" data-i18n="fillTemplateInfo">Fill Template Information</button>
+                            <textarea id="template-content" class="w-full mt-4 p-2 border rounded min-h-[120px]" data-i18n="templatePreview" placeholder="Generated email content will be displayed here..."></textarea>
+                        </div>
+                        
+                        <!-- Template Input Modal -->
+                        <div id="template-modal" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 hidden">
+                            <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-md relative">
+                                <h3 class="text-lg font-bold mb-4" id="modal-title" data-i18n="fillTemplateInfo">Fill Template Info</h3>
+                                <form id="template-form" class="space-y-3">
+                                    <!-- Dynamic Form Content -->
+                                </form>
+                                <div class="flex justify-end mt-4 gap-2">
+                                    <button type="button" id="cancel-template" class="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300" data-i18n="cancel">Cancel</button>
+                                    <button type="button" id="generate-template" class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700" data-i18n="generate">Generate</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Follow-up Email -->
+                        <div class="function-panel hidden" id="follow-up-panel">
+                            <h3 class="text-lg font-semibold mb-3 text-gray-800" data-i18n="followUpEmail">Follow-up Email</h3>
+                            <div class="space-y-3">
+                                <textarea id="follow-up-email" class="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" data-i18n="enterEmailContent" placeholder="Please enter the previous email content..." rows="6"></textarea>
+                                <input type="text" id="follow-up-instruction" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" data-i18n="enterInstruction" placeholder="Please enter an instruction, such as 'follow up' or 'express thanks'">
+                                <button id="follow-up-button" class="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors">
+                                    <i class="fas fa-reply mr-2"></i><span data-i18n="generateFollowUp">Generate Follow-up Email</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Chat Input Area -->
+                    <div id="chat-input-area" class="p-3 border-t border-gray-200 bg-white">
+                        <div class="relative">
+                            <textarea id="chat-input" class="w-full p-3 pr-16 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" data-i18n="enterMessage" placeholder="Please enter your question or email content..." rows="3"></textarea>
+                            <button id="send-button" class="absolute right-3 bottom-3 px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors" title="Send Message">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        // Global Variables
+        let chatHistory = [];  // Dialogue history record
+        let currentFunction = "chat";  // The currently selected function
+        let currentResponseElement = null;  // The element that is currently receiving a streaming response
+        let currentResponseContent = "";  // The complete content of the current response
+        let streamingEnabled = true;  // Whether to enable stream output
+        
+        // Markdown parsing configuration
+        marked.setOptions({
+            renderer: new marked.Renderer(),
+            highlight: function(code, language) {
+                const validLanguage = hljs.getLanguage(language) ? language : 'plaintext';
+                return hljs.highlight(validLanguage, code).value;
+            },
+            pedantic: false,
+            gfm: true,
+            breaks: true,
+            sanitize: false,
+            smartLists: true,
+            smartypants: false,
+            xhtml: false
+        });
+        
+        // DOM element
+        const chatBody = document.getElementById("chat-body");
+        const chatInput = document.getElementById("chat-input");
+        const sendButton = document.getElementById("send-button");
+        const functionItems = document.querySelectorAll("[data-function]");
+        const functionPanels = document.querySelectorAll(".function-panel");
+        const streamToggle = document.getElementById("stream-toggle");
+        const openSidebarButton = document.getElementById("open-sidebar");
+        const closeSidebarButton = document.getElementById("close-sidebar");
+        const sidebar = document.querySelector("aside");
+        const functionPanelsContainer = document.getElementById("function-panels");
+        
+        // Function panel buttons
+        const analyzeButton = document.getElementById("analyze-button");
+        const rewriteButton = document.getElementById("rewrite-button");
+        const translateButton = document.getElementById("translate-button");
+        const templateButton = document.getElementById("template-button");
+        const followUpButton = document.getElementById("follow-up-button");
+        
+        // The logic related to email templates
+        const templatePanel = document.getElementById('template-panel');
+        const templateType = document.getElementById('template-type');
+        const openTemplateModal = document.getElementById('open-template-modal');
+        const templateModal = document.getElementById('template-modal');
+        const templateForm = document.getElementById('template-form');
+        const cancelTemplate = document.getElementById('cancel-template');
+        const generateTemplate = document.getElementById('generate-template');
+        const templateContent = document.getElementById('template-content');
+
+        // Template field configuration
+        const templateFields = {
+            meeting: [
+                {label: 'recipient', name: 'to', type: 'text', required: true},
+                {label: 'subject', name: 'subject', type: 'text', required: true},
+                {label: 'time', name: 'time', type: 'text', required: true},
+                {label: 'place', name: 'place', type: 'text', required: true},
+                {label: 'remark', name: 'remark', type: 'textarea', required: false},
+            ],
+            leave: [
+                {label: 'recipient', name: 'to', type: 'text', required: true},
+                {label: 'leaveType', name: 'leaveType', type: 'select', required: true, options: [
+                    {value: 'personal', i18nKey: 'personalLeave'},
+                    {value: 'sick', i18nKey: 'sickLeave'},
+                    {value: 'annual', i18nKey: 'annualLeave'},
+                    {value: 'other', i18nKey: 'otherLeave'}
+                ]},
+                {label: 'time', name: 'time', type: 'text', required: true},
+                {label: 'reason', name: 'reason', type: 'textarea', required: true},
+            ],
+            complaint: [
+                {label: 'recipient', name: 'to', type: 'text', required: true},
+                {label: 'complaintSummary', name: 'summary', type: 'textarea', required: true},
+                {label: 'replyContent', name: 'reply', type: 'textarea', required: true},
+            ],
+            quotation: [
+                {label: 'recipient', name: 'to', type: 'text', required: true},
+                {label: 'productName', name: 'product', type: 'text', required: true},
+                {label: 'price', name: 'price', type: 'text', required: true},
+                {label: 'validPeriod', name: 'valid', type: 'text', required: false},
+                {label: 'remark', name: 'remark', type: 'textarea', required: false},
+            ],
+            reminder: [
+                {label: 'recipient', name: 'to', type: 'text', required: true},
+                {label: 'amount', name: 'amount', type: 'text', required: true},
+                {label: 'orderNumber', name: 'order', type: 'text', required: false},
+                {label: 'deadline', name: 'deadline', type: 'text', required: false},
+            ],
+        };
+
+        // Template content generation rules
+        const templateGenerators = {
+            meeting: (d) => `尊敬的${d.to}:\n\n您好!\n\n兹邀请您参加主题为"${d.subject}"的会议。\n会议时间:${d.time}\n会议地点:${d.place}\n${d.remark ? '会议内容/备注：' + d.remark + '\n' : ''}\n请您准时出席。如有疑问请随时联系。\n\n此致\n敬礼!`,
+            leave: (d) => `尊敬的${d.to}:\n\n本人因${d.leaveType}，需请假，时间为：${d.time}。\n请假原因:${d.reason}\n望批准,谢谢！\n\n此致\n敬礼!`,
+            complaint: (d) => `尊敬的${d.to}:\n\n针对您的投诉:${d.summary}\n我们的处理结果/回复如下：\n${d.reply}\n如有疑问请随时联系。\n\n此致\n敬礼!`,
+            quotation: (d) => `尊敬的${d.to}:\n\n感谢您的咨询。现将${d.product}的报价如下：\n报价金额:${d.price}\n${d.valid ? '有效期：' + d.valid + '\n' : ''}${d.remark ? '备注：' + d.remark + '\n' : ''}\n如有疑问请随时联系。\n\n此致\n敬礼!`,
+            reminder: (d) => `尊敬的${d.to}:\n\n贵司尚有${d.amount}未付款项，${d.order ? '涉及订单号：' + d.order + ',' : ''}${d.deadline ? '请于' + d.deadline + '前完成付款。' : ''}\n如已付款请忽略此函。如有疑问请随时联系。\n\n此致\n敬礼!`,
+        };
+
+        // Open the pop-up window and render the form
+        openTemplateModal.onclick = function() {
+            const type = templateType.value;
+            const fields = templateFields[type];
+            templateForm.innerHTML = '';
+            fields.forEach(field => {
+                let inputHtml = '';
+                if(field.type === 'textarea') {
+                    inputHtml = `<textarea name="${field.name}" class="w-full p-2 border rounded" ${field.required ? 'required' : ''}></textarea>`;
+                } else if(field.type === 'select') {
+                    if (field.options && Array.isArray(field.options) && field.options[0].i18nKey) {
+                        // Handle the options with i18n
+                        inputHtml = `<select name="${field.name}" class="w-full p-2 border rounded">
+                            ${field.options.map(opt => `<option value='${opt.value}' data-i18n="${opt.i18nKey}">${i18n[currentLang][opt.i18nKey]}</option>`).join('')}
+                        </select>`;
+                    } else {
+                        // Handle the common options
+                        inputHtml = `<select name="${field.name}" class="w-full p-2 border rounded">${field.options.map(opt => `<option value='${opt}'>${opt}</option>`).join('')}</select>`;
+                    }
+                } else {
+                    inputHtml = `<input type="text" name="${field.name}" class="w-full p-2 border rounded" ${field.required ? 'required' : ''}/>`;
+                }
+                const requiredText = field.required ? `<span class="text-red-500" data-i18n="required">*</span>` : '';
+                templateForm.innerHTML += `<label class="block font-medium mb-1"><span data-i18n="${field.label}"></span>${requiredText}</label>${inputHtml}`;
+            });
+            templateModal.classList.remove('hidden');
+            updatePageLanguage(); // Update the language of the newly added elements
+        };
+        // Cancel the pop-up window closure
+        cancelTemplate.onclick = function() {
+            templateModal.classList.add('hidden');
+        };
+        // Generate template content
+        generateTemplate.onclick = function() {
+            const type = templateType.value;
+            const formData = new FormData(templateForm);
+            const data = {};
+            for(const [k,v] of formData.entries()) data[k]=v;
+            const content = templateGenerators[type](data);
+            templateContent.value = content;
+            templateModal.classList.add('hidden');
+        };
+        
+        // initialize
+        function init() {
+            // Add event listeners
+            sendButton.addEventListener("click", handleSendMessage);
+            chatInput.addEventListener("keydown", function(event) {
+                if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    handleSendMessage();
+                }
+            });
+            
+            // Mobile sidebar control
+            openSidebarButton.addEventListener("click", function() {
+                sidebar.classList.remove("hidden");
+            });
+            
+            closeSidebarButton.addEventListener("click", function() {
+                sidebar.classList.add("hidden");
+            });
+            
+            // Stream output switching
+            streamToggle.addEventListener("change", function() {
+                streamingEnabled = this.checked;
+            });
+            
+            // Function Selection
+            functionItems.forEach(item => {
+                item.addEventListener("click", function() {
+                    const functionName = this.getAttribute("data-function");
+                    setActiveFunction(functionName);
+                    
+                    // Hide the sidebar after clicking the menu on the mobile device
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.add("hidden");
+                    }
+                });
+            });
+            
+            // Function button event
+            analyzeButton.addEventListener("click", handleAnalyzeEmail);
+            rewriteButton.addEventListener("click", handleRewriteEmail);
+            translateButton.addEventListener("click", handleTranslateEmail);
+            followUpButton.addEventListener("click", handleGenerateFollowUp);
+        }
+        
+        // Set the current activity function
+        function setActiveFunction(functionName) {
+            currentFunction = functionName;
+            
+            // Update the activity status
+            functionItems.forEach(item => {
+                if (item.getAttribute("data-function") === functionName) {
+                    item.classList.remove("text-gray-700", "hover:bg-gray-100");
+                    item.classList.add("bg-indigo-100", "text-indigo-700");
+                } else {
+                    item.classList.remove("bg-indigo-100", "text-indigo-700");
+                    item.classList.add("text-gray-700", "hover:bg-gray-100");
+                }
+            });
+            
+            // Update the display of the function panel
+            if (functionName === "chat") {
+                functionPanelsContainer.classList.add("hidden");
+                document.getElementById("chat-input-area").classList.remove("hidden");
+            } else {
+                functionPanelsContainer.classList.remove("hidden");
+                document.getElementById("chat-input-area").classList.add("hidden");
+                
+                functionPanels.forEach(panel => {
+                    panel.classList.add("hidden");
+                });
+                
+                const panelId = `${functionName}-panel`;
+                document.getElementById(panelId).classList.remove("hidden");
+            }
+            
+            // Update the chat title
+            updateChatTitle(functionName);
+        }
+        
+        // Update the chat title
+        function updateChatTitle(functionName) {
+            const titleKey = {
+                "chat": "chatWithAssistant",
+                "analyze": "emailAnalysis",
+                "rewrite": "emailRewrite",
+                "translate": "emailTranslate",
+                "template": "emailTemplate",
+                "follow-up": "followUpEmail"
+            }[functionName] || "chatWithAssistant";
+            
+            document.getElementById("chat-title").textContent = i18n[currentLang][titleKey];
+        }
+        
+        // Handle the sent messages
+        function handleSendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+            
+            // Add user messages to the chat
+            addMessageToChat(message, "user");
+            chatInput.value = "";
+            
+            // Send to the back end
+            if (streamingEnabled) {
+                sendStreamChatRequest(message);
+            } else {
+                sendChatRequest(message);
+            }
+        }
+        
+        // Add messages to the chat interface
+        function addMessageToChat(message, sender, streaming = false) {
+            const messageElement = document.createElement("div");
+            messageElement.classList.add("chat-message");
+            
+            // Create an avatar
+            const avatar = document.createElement("div");
+            avatar.classList.add("avatar");
+            avatar.classList.add(sender === "user" ? "avatar-user" : "avatar-ai");
+            avatar.textContent = sender === "user" ? "U" : "AI";
+            
+            // Create a message content container
+            const contentContainer = document.createElement("div");
+            contentContainer.classList.add("message-content");
+            if (sender === "user") {
+                contentContainer.classList.add("user");
+            }
+            
+            // Create content
+            const contentElement = document.createElement("div");
+            contentElement.classList.add("markdown-content");
+            
+            // Handle user messages simply and parse robot messages using Markdown
+            if (sender === "user") {
+                // Convert line breaks in plain text to <br>
+                contentElement.innerHTML = message.replace(/\n/g, '<br>');
+            } else if (!streaming) {
+                // Non-stream output robot messages are directly parsed using Markdown
+                contentElement.innerHTML = marked.parse(message);
+                
+                // Highlight the initialization code
+                contentElement.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightBlock(block);
+                });
+            }
+            
+            contentContainer.appendChild(contentElement);
+            
+            // If it is a streaming output AI message, add a flashing cursor
+            if (sender !== "user" && streaming) {
+                contentElement.innerHTML = "";
+                const cursor = document.createElement("span");
+                cursor.classList.add("cursor");
+                contentElement.appendChild(cursor);
+                currentResponseElement = contentElement;
+                currentResponseContent = "";
+            }
+            
+            // Add operation buttons
+            const actionsDiv = document.createElement("div");
+            actionsDiv.classList.add("message-actions");
+            
+            // Add quick fill buttons for each function
+            const functions = [
+                { id: "analyze", icon: "fa-search", title: "添加到分析" },
+                { id: "rewrite", icon: "fa-pen-fancy", title: "添加到改写" },
+                { id: "translate", icon: "fa-language", title: "添加到翻译" },
+                { id: "follow-up", icon: "fa-reply", title: "添加到后续" }
+            ];
+            
+            functions.forEach(func => {
+                const button = document.createElement("button");
+                button.classList.add("action-button");
+                button.innerHTML = `<i class="fas ${func.icon}"></i>`;
+                button.title = func.title;
+                button.onclick = (e) => {
+                    e.stopPropagation();
+                    quickFillContent(func.id, message);
+                };
+                actionsDiv.appendChild(button);
+            });
+            
+            contentContainer.appendChild(actionsDiv);
+            
+            // The order of avatars and messages is determined by the sender
+            if (sender === "user") {
+                messageElement.appendChild(contentContainer);
+                messageElement.appendChild(avatar);
+            } else {
+                messageElement.appendChild(avatar);
+                messageElement.appendChild(contentContainer);
+            }
+            
+            chatBody.appendChild(messageElement);
+            chatBody.scrollTop = chatBody.scrollHeight;
+            
+            // Update the chat history (if it is not the initial element of the stream output)
+            if (!streaming) {
+                if (sender === "user") {
+                    chatHistory.push({role: "user", content: message});
+                } else {
+                    chatHistory.push({role: "assistant", content: message});
+                }
+            }
+            
+            return messageElement;
+        }
+        
+        // Quickly fill the content to the corresponding function
+        function quickFillContent(functionId, content) {
+            // Switch to the corresponding function
+            setActiveFunction(functionId);
+            
+            // Fill in the content according to the functional type
+            switch(functionId) {
+                case "analyze":
+                    document.getElementById("analyze-email").value = content;
+                    break;
+                case "rewrite":
+                    document.getElementById("rewrite-email").value = content;
+                    break;
+                case "translate":
+                    document.getElementById("translate-email").value = content;
+                    break;
+                case "template":
+                    document.getElementById("template-scenario").value = content;
+                    break;
+                case "follow-up":
+                    document.getElementById("follow-up-email").value = content;
+                    break;
+            }
+        }
+        
+        // Update the content of the streaming message
+        function updateStreamingMessage(content, done = false) {
+            if (!currentResponseElement) return;
+            
+            // Update content
+            currentResponseContent += content;
+            
+            // Update display
+            if (currentResponseElement.lastChild && currentResponseElement.lastChild.classList.contains("cursor")) {
+                currentResponseElement.removeChild(currentResponseElement.lastChild);
+            }
+            
+            // Use temporary divs to handle HTML content to avoid XSS risks
+            const tempDiv = document.createElement('div');
+            
+            // Real-time parsing of Markdown, even during stream output
+            try {
+                // Try to parse the currently accumulated content
+                tempDiv.innerHTML = marked.parse(currentResponseContent);
+                
+                // Highlight the initialization code
+                tempDiv.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightBlock(block);
+                });
+            } catch (e) {
+                // If the parsing fails, roll back to the basic text display
+                console.warn("Markdown parsing warning:", e);
+                tempDiv.innerHTML = currentResponseContent.replace(/\n/g, '<br>');
+            }
+            
+            // Clear the current content and add new content
+            currentResponseElement.innerHTML = '';
+            while (tempDiv.firstChild) {
+                currentResponseElement.appendChild(tempDiv.firstChild);
+            }
+            
+            // If it is not completed, add the cursor again
+            if (!done) {
+                const cursor = document.createElement("span");
+                cursor.classList.add("cursor");
+                currentResponseElement.appendChild(cursor);
+            } else {
+                // Update the chat history
+                chatHistory.push({role: "assistant", content: currentResponseContent});
+                currentResponseElement = null;
+            }
+            
+            // Roll to the bottom
+            chatBody.scrollTop = chatBody.scrollHeight;
+        }
+        
+        // Send chat requests to the backend (non-streaming)
+        function sendChatRequest(message, action = null, parameters = null) {
+            // Disable the send button to display the loading status
+            toggleLoadingState(true);
+            
+            // Build request data
+            const requestData = {
+                message: message,
+                history: chatHistory.slice(0, -1),  // Excluding the current message
+                stream: false
+            };
+            
+            // If there are specific operations and parameters
+            if (action) {
+                requestData.action = action;
+                requestData.parameters = parameters;
+            }
+            
+            // Send API requests
+            fetch("/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Restore the status of the send button
+                toggleLoadingState(false);
+                
+                if (data.code === 200 && data.data) {
+                    // Add AI replies to the chat
+                    addMessageToChat(data.data, "bot");
+                } else {
+                    // Display error message
+                    addMessageToChat(`Sorry, there was a problem in processing your request: ${data.msg}`, "bot");
+                }
+            })
+            .catch(error => {
+                // Restore the status of the send button
+                toggleLoadingState(false);
+                
+                // Display error message
+                addMessageToChat(`Sorry, an error occurred: ${error.message}`, "bot");
+                console.error("Error:", error);
+            });
+        }
+        
+        // Send streaming chat requests to the back end
+        function sendStreamChatRequest(message, action = null, parameters = null) {
+            // Disable the send button to display the loading status
+            toggleLoadingState(true);
+            
+            // Create an empty reply message element (with a cursor)
+            addMessageToChat("", "bot", true);
+            
+            // Build request data
+            const requestData = {
+                message: message,
+                history: chatHistory.slice(0, -1),  // Excluding the current message
+                stream: true
+            };
+            
+            // If there are specific operations and parameters
+            if (action) {
+                requestData.action = action;
+                requestData.parameters = parameters;
+            }
+            
+            // Send API requests
+            fetch("/chat/stream", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = ''; // Used for storing unfinished JSON strings
+                
+                function processStream({ done, value }) {
+                    if (done) {
+                        // If there is still data in the buffer, try to process it
+                        if (buffer.trim()) {
+                            try {
+                                const data = JSON.parse(buffer.trim());
+                                if (data.code === 200) {
+                                    if (data.data) {
+                                        updateStreamingMessage(data.data);
+                                    }
+                                    if (data.done) {
+                                        updateStreamingMessage("", true);
+                                    }
+                                }
+                            } catch (e) {
+                                console.error("An error occurred when the buffer was finally parsed:", e, "buffer content:", buffer);
+                            }
+                        }
+                        toggleLoadingState(false);
+                        return;
+                    }
+                    
+                    // Decode and process the received data
+                    const chunk = decoder.decode(value, { stream: true });
+                    buffer += chunk;
+                    
+                    // Divide and process each row by row
+                    const lines = buffer.split('\n');
+                    // Retain the last line (which may be incomplete) as the new buffer
+                    buffer = lines.pop() || '';
+                    
+                    // Handle all complete rows
+                    for (const line of lines) {
+                        if (line.trim()) {
+                            try {
+                                const data = JSON.parse(line.trim());
+                                if (data.code === 200) {
+                                    if (data.data) {
+                                        updateStreamingMessage(data.data);
+                                    }
+                                    if (data.done) {
+                                        updateStreamingMessage("", true);
+                                        toggleLoadingState(false);
+                                    }
+                                } else {
+                                    updateStreamingMessage(`\nProcessing failed: ${data.msg}`, true);
+                                    toggleLoadingState(false);
+                                }
+                            } catch (e) {
+                                console.error("Data parsing error:", e, "Original data:", line);
+                            }
+                        }
+                    }
+                    
+                    // Continue reading the stream
+                    return reader.read().then(processStream);
+                }
+                
+                // Start reading the stream
+                reader.read().then(processStream);
+            })
+            .catch(error => {
+                // Restore the status of the send button
+                toggleLoadingState(false);
+                
+                // Display error message
+                if (currentResponseElement) {
+                    updateStreamingMessage(`\n抱歉，发生了错误: ${error.message}`, true);
+                } else {
+                    addMessageToChat(`抱歉，发生了错误: ${error.message}`, "bot");
+                }
+                console.error("Error:", error);
+            });
+        }
+        
+        // Switch the loading state
+        function toggleLoadingState(isLoading) {
+            if (isLoading) {
+                sendButton.disabled = true;
+                sendButton.innerHTML = '<span class="loading"></span>';
+            } else {
+                sendButton.disabled = false;
+                sendButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+            }
+        }
+        
+        // Handle email analysis
+        function handleAnalyzeEmail() {
+            const emailContent = document.getElementById("analyze-email").value.trim();
+            if (!emailContent) {
+                alert("Please enter the content of the email to be analyzed");
+                return;
+            }
+            
+            addMessageToChat(`Please analyze the following email:\n${emailContent}`, "user");
+            
+            if (streamingEnabled) {
+                sendStreamChatRequest(
+                    `分析邮件`,
+                    "analyze",
+                    { email_content: emailContent }
+                );
+            } else {
+                sendChatRequest(
+                    `分析邮件`,
+                    "analyze",
+                    { email_content: emailContent }
+                );
+            }
+        }
+        
+        // Handle the rewriting of emails
+        function handleRewriteEmail() {
+            const emailContent = document.getElementById("rewrite-email").value.trim();
+            const requirements = document.getElementById("rewrite-requirements").value.trim();
+            
+            if (!emailContent) {
+                alert("Please enter the content of the email to be rewritten");
+                return;
+            }
+            
+            if (!requirements) {
+                alert("Please enter the rewriting requirements");
+                return;
+            }
+            
+            addMessageToChat(`Please rewrite the email according to the following requirements:\nRequirement: ${requirements}\n\nEmail content:\n${emailContent}`, "user");
+            
+            if (streamingEnabled) {
+                sendStreamChatRequest(
+                    `改写邮件`,
+                    "rewrite",
+                    { 
+                        email_content: emailContent,
+                        requirements: requirements
+                    }
+                );
+            } else {
+                sendChatRequest(
+                    `改写邮件`,
+                    "rewrite",
+                    { 
+                        email_content: emailContent,
+                        requirements: requirements
+                    }
+                );
+            }
+        }
+        
+        // Handle email translation
+        function handleTranslateEmail() {
+            const emailContent = document.getElementById("translate-email").value.trim();
+            const targetLanguage = document.getElementById("translate-language").value;
+            
+            if (!emailContent) {
+                alert("Please enter the content of the email to be translated");
+                return;
+            }
+            
+            if (!targetLanguage) {
+                alert("Please select the target language");
+                return;
+            }
+            
+            addMessageToChat(`Please translate the following email into${targetLanguage}:\n${emailContent}`, "user");
+            
+            if (streamingEnabled) {
+                sendStreamChatRequest(
+                    `翻译邮件`,
+                    "translate",
+                    { 
+                        email_content: emailContent,
+                        target_language: targetLanguage
+                    }
+                );
+            } else {
+                sendChatRequest(
+                    `翻译邮件`,
+                    "translate",
+                    { 
+                        email_content: emailContent,
+                        target_language: targetLanguage
+                    }
+                );
+            }
+        }
+        
+        // Handle the generation of email templates
+        function handleGenerateTemplate() {
+            const scenario = document.getElementById("template-scenario").value.trim();
+            
+            if (!scenario) {
+                alert("Please enter the scene description");
+                return;
+            }
+            
+            addMessageToChat(`Please generate an email template for the following scenarios: ${scenario}`, "user");
+            
+            if (streamingEnabled) {
+                sendStreamChatRequest(
+                    `生成模板`,
+                    "template",
+                    { scenario: scenario }
+                );
+            } else {
+                sendChatRequest(
+                    `生成模板`,
+                    "template",
+                    { scenario: scenario }
+                );
+            }
+        }
+        
+        // Handle the generation of subsequent emails
+        function handleGenerateFollowUp() {
+            const previousEmail = document.getElementById("follow-up-email").value.trim();
+            const instruction = document.getElementById("follow-up-instruction").value.trim();
+            
+            if (!previousEmail) {
+                alert("Please enter the content of the previous email");
+                return;
+            }
+            
+            if (!instruction) {
+                alert("Please enter the instruction");
+                return;
+            }
+            
+            addMessageToChat(`Based on the previous email below, please follow the instructions"${instruction}"Generate a follow-up email:\n\n${previousEmail}`, "user");
+            
+            if (streamingEnabled) {
+                sendStreamChatRequest(
+                    `生成后续邮件`,
+                    "follow_up",
+                    { 
+                        previous_email: previousEmail,
+                        instruction: instruction
+                    }
+                );
+            } else {
+                sendChatRequest(
+                    `生成后续邮件`,
+                    "follow_up",
+                    { 
+                        previous_email: previousEmail,
+                        instruction: instruction
+                    }
+                );
+            }
+        }
+        
+        // Add language configuration
+        const i18n = {
+            en: {
+                title: "Email Assistant",
+                streamOutput: "Streaming Output",
+                functionMenu: "Function Menu",
+                generalChat: "General Chat",
+                emailTemplate: "Email Template",
+                emailAnalysis: "Email Analysis",
+                emailRewrite: "Email Rewrite",
+                emailTranslate: "Email Translation",
+                followUpEmail: "Follow-up Email",
+                closeMenu: "Close Menu",
+                chatWithAssistant: "Chat with Assistant",
+                sendMessage: "Send Message",
+                analyzeEmail: "Analyze Email",
+                rewriteEmail: "Rewrite Email",
+                translateEmail: "Translate Email",
+                generateTemplate: "Generate Template",
+                generateFollowUp: "Generate Follow-up",
+                selectTargetLanguage: "Select Target Language",
+                enterEmailContent: "Enter your email content...",
+                enterRewriteRequirements: "Enter rewrite requirements, e.g., 'more formal', 'friendlier', etc.",
+                enterInstruction: "Enter instruction, e.g., 'follow up', 'express thanks', etc.",
+                selectTemplateType: "Select Template Type",
+                meetingInvitation: "Meeting Invitation",
+                leaveRequest: "Leave Request",
+                complaintReply: "Complaint Reply",
+                quotation: "Quotation",
+                paymentReminder: "Payment Reminder",
+                fillTemplateInfo: "Fill Template Information",
+                cancel: "Cancel",
+                generate: "Generate",
+                recipient: "Recipient",
+                subject: "Subject",
+                time: "Time",
+                place: "Place",
+                remark: "Remark",
+                leaveType: "Leave Type",
+                reason: "Reason",
+                complaintSummary: "Complaint Summary",
+                replyContent: "Reply Content",
+                productName: "Product/Service Name",
+                price: "Price",
+                validPeriod: "Valid Period",
+                amount: "Amount",
+                orderNumber: "Order Number",
+                deadline: "Deadline",
+                required: "Required",
+                welcomeMessage: "Hello! I'm your email assistant. I can help you analyze emails, improve tone, translate emails, generate templates or follow-up emails. How can I help you?",
+                enterMessage: "Enter your question or email content...",
+                templatePreview: "Generated email content will be displayed here...",
+                languages: {
+                    English: "English",
+                    Japanese: "Japanese",
+                    Korean: "Korean",
+                    French: "French",
+                    German: "German",
+                    Spanish: "Spanish",
+                    Russian: "Russian",
+                    Portuguese: "Portuguese",
+                    Italian: "Italian",
+                    Arabic: "Arabic",
+                    Thai: "Thai",
+                    Vietnamese: "Vietnamese",
+                    Indonesian: "Indonesian",
+                    Malay: "Malay"
+                },
+                personalLeave: "Personal Leave",
+                sickLeave: "Sick Leave",
+                annualLeave: "Annual Leave",
+                otherLeave: "Other Leave"
+            },
+            zh: {
+                title: "邮件智能助手",
+                streamOutput: "流式输出",
+                functionMenu: "功能菜单",
+                generalChat: "一般对话",
+                emailTemplate: "邮件模板",
+                emailAnalysis: "邮件分析",
+                emailRewrite: "邮件改写",
+                emailTranslate: "邮件翻译",
+                followUpEmail: "后续邮件",
+                closeMenu: "关闭菜单",
+                chatWithAssistant: "与邮件助手对话",
+                sendMessage: "发送消息",
+                analyzeEmail: "分析邮件",
+                rewriteEmail: "改写邮件",
+                translateEmail: "翻译邮件",
+                generateTemplate: "生成模板",
+                generateFollowUp: "生成后续邮件",
+                selectTargetLanguage: "请选择目标语言",
+                enterEmailContent: "请输入您的邮件内容...",
+                enterRewriteRequirements: "请输入改写要求，如'更正式'、'更友好'等",
+                enterInstruction: "请输入指令，如'催一下回复'、'表示感谢'等",
+                selectTemplateType: "选择邮件模板类型",
+                meetingInvitation: "会议邀请",
+                leaveRequest: "请假申请",
+                complaintReply: "客户投诉回复",
+                quotation: "报价函",
+                paymentReminder: "催款函",
+                fillTemplateInfo: "填写模板信息",
+                cancel: "取消",
+                generate: "生成",
+                recipient: "收件人",
+                subject: "主题",
+                time: "时间",
+                place: "地点",
+                remark: "备注",
+                leaveType: "请假类型",
+                reason: "原因",
+                complaintSummary: "投诉内容摘要",
+                replyContent: "回复内容",
+                productName: "产品/服务名称",
+                price: "报价金额",
+                validPeriod: "有效期",
+                amount: "欠款金额",
+                orderNumber: "订单号",
+                deadline: "截止日期",
+                required: "必填",
+                welcomeMessage: "您好！我是您的邮件智能助手。我可以帮助您分析邮件、改进语气、翻译邮件、生成模板或后续邮件等。请问有什么可以帮您的？",
+                enterMessage: "请输入您的问题或邮件内容...",
+                templatePreview: "生成的邮件内容会显示在这里...",
+                languages: {
+                    English: "英语",
+                    Japanese: "日语",
+                    Korean: "韩语",
+                    French: "法语",
+                    German: "德语",
+                    Spanish: "西班牙语",
+                    Russian: "俄语",
+                    Portuguese: "葡萄牙语",
+                    Italian: "意大利语",
+                    Arabic: "阿拉伯语",
+                    Thai: "泰语",
+                    Vietnamese: "越南语",
+                    Indonesian: "印尼语",
+                    Malay: "马来语"
+                },
+                personalLeave: "事假",
+                sickLeave: "病假",
+                annualLeave: "年假",
+                otherLeave: "其他"
+            }
+        };
+
+        let currentLang = 'en'; // The default language is English
+
+        // The function for updating the page text
+        function updatePageLanguage() {
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (i18n[currentLang][key]) {
+                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                        element.placeholder = i18n[currentLang][key];
+                    } else if (element.tagName === 'SELECT') {
+                        // If it is the language selection drop-down box, update the text of all options
+                        if (element.id === 'translate-language') {
+                            Array.from(element.options).forEach(option => {
+                                if (option.value) {
+                                    option.text = i18n[currentLang].languages[option.value];
+                                } else {
+                                    option.text = i18n[currentLang].selectTargetLanguage;
+                                }
+                            });
+                        } else {
+                            // Handle other options with "data-i18n"
+                            Array.from(element.options).forEach(option => {
+                                const optionKey = option.getAttribute('data-i18n');
+                                if (optionKey && i18n[currentLang][optionKey]) {
+                                    option.text = i18n[currentLang][optionKey];
+                                }
+                            });
+                        }
+                    } else {
+                        element.textContent = i18n[currentLang][key];
+                    }
+                }
+            });
+
+            // Update the text of the language switching button
+            const switchButton = document.getElementById('language-switch');
+            switchButton.querySelector('span').textContent = currentLang === 'en' ? '中文' : 'English';
+
+            // Update the document language
+            document.documentElement.lang = currentLang;
+
+            // Update the chat title
+            updateChatTitle(currentFunction);
+        }
+
+        // Language switching event handling
+        document.getElementById('language-switch').addEventListener('click', () => {
+            currentLang = currentLang === 'en' ? 'zh' : 'en';
+            updatePageLanguage();
+        });
+
+        // Initialize the language after the page loading is completed
+        document.addEventListener('DOMContentLoaded', () => {
+            updatePageLanguage();
+            init(); // Call the original initialization function
+        });
+    </script>
+</body>
+</html> 
