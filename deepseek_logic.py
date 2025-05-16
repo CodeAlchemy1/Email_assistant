@@ -4,7 +4,7 @@ import asyncio
 from typing import List, Dict, Any, Optional, AsyncGenerator, Callable
 
 # DeepSeek API configuration
-DEEPSEEK_API_KEY = "sk-476ad4ac15d241eb84f1ba13823ed1f2"
+DEEPSEEK_API_KEY = "secret"
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 class DeepSeekClient:
